@@ -12,7 +12,9 @@ import (
 const Bucket = "prawnbot"
 
 func getLables(bucket, key string) ([]*rekognition.Label, error) {
-	svc := rekognition.New(getSession())
+	svc := rekognition.New(session.Must(session.NewSessionWithOptions(session.Options{
+		SharedConfigState: session.SharedConfigEnable,
+	})))
 	input := &rekognition.DetectLabelsInput{
 		Image: &rekognition.Image{
 			S3Object: &rekognition.S3Object{
@@ -87,10 +89,4 @@ func contains(word string, labels []*rekognition.Label) bool {
 		}
 	}
 	return contains
-}
-
-func getSession() *session.Session {
-	return session.Must(session.NewSessionWithOptions(session.Options{
-		SharedConfigState: session.SharedConfigEnable,
-	}))
 }
