@@ -17,28 +17,14 @@ import (
 
 const bucket = "prawnbot"
 
-// func ImageFinder() (string, error) {
-// 	bot, err := reddit.NewBotFromAgentFile("credentials.txt", 0)
-// 	harvest, err := bot.Listing("/r/pics", "")
-// 	if err != nil {
-// 		fmt.Println("Failed to fetch /r/golang: ", err)
-// 		return "", err
-// 	}
-
-// 	for _, post := range harvest.Posts[:5] {
-// 		if strings.HasSuffix(post.URL, ".jpg") {
-// 			// read file from URL in memory
-// 			resp, e := http.Get(post.URL)
-// 			// send a put to S3 bucket
-// 			Put(resp.Body, post.URL)
-// 			fmt.Printf("[%s] posted [%s]\n", post.Title, post.URL)
-// 		}
-// 	}
-// 	return post.
-// }
-
 type pr0nBot struct {
 	bot reddit.Bot
+}
+
+func getSession() *session.Session {
+	return session.Must(session.NewSessionWithOptions(session.Options{
+		SharedConfigState: session.SharedConfigEnable,
+	}))
 }
 
 func ImageStreamFinder() {
@@ -49,19 +35,7 @@ func ImageStreamFinder() {
 	wait()
 }
 
-func (r *pr0nBot) Post(p *reddit.Post) error {
-	if strings.HasSuffix(p.URL, ".jpg") {
-		<-time.After(10 * time.Second)
-		fmt.Printf("Image: %s\n", p.URL)
-		// read file from URL in memory
-		resp, _ := http.Get(p.URL)
-		// send a put to S3 bucket
-		Put(resp.Body, p.URL)
-	}
-	return nil
-}
-
-//Put puts the content to the ReadWriter's bucket at the key
+// Put the content to the ReadWriter's bucket at the key.
 func Put(content io.Reader, key string) error {
 	svc := s3.New(getSession())
 	input := &s3.PutObjectInput{
@@ -76,8 +50,19 @@ func Put(content io.Reader, key string) error {
 	return nil
 }
 
-func getSession() *session.Session {
-	return session.Must(session.NewSessionWithOptions(session.Options{
-		SharedConfigState: session.SharedConfigEnable,
-	}))
+// Start initializes the bot.
+func Start() {
+	ImageStreamFinder()
+}
+
+func (r *pr0nBot) Post(p *reddit.Post) error {
+	if strings.HasSuffix(p.URL, ".jpg") {
+		<-time.After(10 * time.Second)
+		fmt.Printf("Image: %s\n", p.URL)
+		// read file from URL in memory
+		resp, _ := http.Get(p.URL)
+		// send a put to S3 bucket
+		Put(resp.Body, p.URL)
+	}
+	return nil
 }
