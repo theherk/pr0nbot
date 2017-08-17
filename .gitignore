@@ -1,0 +1,7 @@
+build/
+dist/
+tmp/
+*.so
+*.zip
+pr0nbot
+terraform/pr0nbot-root.tf
