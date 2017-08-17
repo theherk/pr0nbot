@@ -1,15 +1,13 @@
 package main
 
-import (
-	"fmt"
-	"os"
+import "github.com/theherk/pr0nbot/lib/scrape"
 
-	"github.com/theherk/pr0nbot/cmd"
-)
+type announcer struct{}
 
 func main() {
-	if err := cmd.RootCmd.Execute(); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
+	scrape.ImageStreamFinder()
+	// if err := cmd.RootCmd.Execute(); err != nil {
+	// 	fmt.Println(err)
+	// 	os.Exit(1)
+	// }
 }

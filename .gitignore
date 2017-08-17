@@ -5,3 +5,4 @@ tmp/
 *.zip
 pr0nbot
 terraform/pr0nbot-root.tf
+credentials.txt
