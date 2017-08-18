@@ -2,8 +2,10 @@
 package scrape
 
 import (
+	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"strings"
 	"time"
@@ -17,11 +19,13 @@ import (
 	"github.com/turnage/graw/reddit"
 )
 
-const bucket = "prawnbot"
-
 type pr0nBot struct {
-	bot reddit.Bot
+	cfg  graw.Config
+	rbot reddit.Bot
+	wait func() error
 }
+
+const bucket = "prawnbot"
 
 func getSession() *session.Session {
 	return session.Must(session.NewSessionWithOptions(session.Options{
@@ -29,22 +33,10 @@ func getSession() *session.Session {
 	}))
 }
 
-func ImageStreamFinder() {
-	bot, _ := reddit.NewBotFromAgentFile("credentials.txt", 0)
-	cfg := graw.Config{Subreddits: []string{"pics"}}
-	handler := &pr0nBot{bot: bot}
-	_, wait, err := graw.Run(handler, bot, cfg)
-	if err != nil {
-		fmt.Println(err)
-	}
-	if err := wait(); err != nil {
-		fmt.Println(err)
-	}
-}
-
-// Put the content to the ReadWriter's bucket at the key.
+// Put the content to S3.
 func Put(content io.Reader, length int64, key string) error {
 	svc := s3.New(getSession())
+	fmt.Println(key)
 	input := &s3.PutObjectInput{
 		Body:                 aws.ReadSeekCloser(content),
 		Bucket:               aws.String(bucket),
@@ -59,35 +51,69 @@ func Put(content io.Reader, length int64, key string) error {
 }
 
 // Start initializes the bot.
-func Start() {
-	ImageStreamFinder()
+func Start(subs []string) {
+	rbot, err := reddit.NewBotFromAgentFile("credentials.txt", 0)
+	if err != nil {
+		panic(err)
+	}
+	bot := &pr0nBot{
+		cfg:  graw.Config{Subreddits: subs},
+		rbot: rbot,
+	}
+	if err := bot.initWait(); err != nil {
+		panic(err)
+	}
+	bot.run()
+}
+
+func (p *pr0nBot) initWait() error {
+	_, wait, err := graw.Run(p, p.rbot, p.cfg)
+	if err != nil {
+		return err
+	}
+	p.wait = wait
+	return nil
 }
 
 func (r *pr0nBot) Post(p *reddit.Post) error {
 	if strings.HasSuffix(p.URL, ".jpg") {
 		<-time.After(10 * time.Second)
 		fmt.Printf("Image: %s\n", p.URL)
-		// read file from URL in memory
 		resp, err := http.Get(p.URL)
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
+		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			fmt.Println(err)
 			return err
 		}
-		fmt.Println(resp)
-		// send a put to S3 bucket
-		if err := Put(resp.Body, resp.ContentLength, p.Name); err != nil {
+		reader := bytes.NewReader(body)
+		if err := Put(reader, resp.ContentLength, p.Name); err != nil {
 			return err
 		}
-		is, err := detect.IsPrawn(p.URL)
+		is, err := detect.IsPrawn(p.Name)
 		if err != nil {
 			fmt.Println(err)
 			return nil
 		}
 		if is {
-			comment.Do(r.bot, p)
+			comment.Do(r.rbot, p)
 		} else {
 			fmt.Println(":( not prawn")
 		}
 	}
 	return nil
+}
+
+func (p *pr0nBot) run() {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recovered err in wait: ", r)
+		}
+	}()
+	if err := p.wait(); err != nil {
+		panic(err)
+	}
 }
