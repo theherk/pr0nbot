@@ -12,6 +12,7 @@ const tmpl = "__This image contains prawn__.\n\nWould somebody please think of "
 	"tagged appropriately. shame, shame, shame... _bong_. %s, you must confess."
 
 // Do will reply to a reddit comment.
-func Do(b reddit.Bot, p reddit.Post) error {
+func Do(b reddit.Bot, p *reddit.Post) error {
+	fmt.Println("post scornful reply")
 	return b.Reply(p.Name, fmt.Sprintf(tmpl, p.Author))
 }
