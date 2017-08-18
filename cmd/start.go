@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
+	"github.com/theherk/pr0nbot/lib/scrape"
 )
 
 var startCmd = &cobra.Command{
